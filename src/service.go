@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-func RunService(host *string, port *string, configFile *string, debugMode *bool) {
-	allowedTargets := readAllowedTargets(configFile)
+func RunService(host *string, port *string, debugMode *bool) {
+	allowedTargets := readAllowedTargets()
 
 	if *debugMode {
 		fmt.Print("Found the following allowed targets:\n")

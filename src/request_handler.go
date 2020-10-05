@@ -11,7 +11,6 @@ import (
 func createRequestHandler(allowedTargets []string)  func(w http.ResponseWriter, r* http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		srcUrl := r.URL.Query().Get("src")
-		rawData := r.URL.Query().Get("data")
 
 		parsedSrcUrl, err := url.Parse(srcUrl)
 		if err != nil {
@@ -22,45 +21,48 @@ func createRequestHandler(allowedTargets []string)  func(w http.ResponseWriter, 
 		for _, allowedTarget := range allowedTargets {
 			if parsedSrcUrl.Host == allowedTarget {
 				shouldBlock = false
-				continue
+				break
 			}
 		}
 
 		if shouldBlock {
-			w.WriteHeader(401)
-			w.Write([]byte("unauthotized"))
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("unauthorized"))
 			return
 		}
+
+		rawData := r.URL.Query().Get("data")
 
 		var data map[string]interface{}
 		err = json.Unmarshal([]byte(rawData), &data)
 		if err != nil {
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("bad request"))
 			return
 		}
 
 		resp, err := http.Get(srcUrl)
 		if err != nil {
-			w.WriteHeader(404)
+			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte("not found"))
 			return
 		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			w.WriteHeader(424)
-			w.Write([]byte("failed dependency"))
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte("broken target"))
 			return
 		}
 
 		result, err := mustache.Render(string(body), data)
 		if err != nil {
-			w.WriteHeader(406)
+			w.WriteHeader(http.StatusNotAcceptable)
 			w.Write([]byte("not acceptable"))
 			return
 		}
-		w.WriteHeader(200)
+
+		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(result))
 	}
 }
